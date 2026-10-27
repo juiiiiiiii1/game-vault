@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GameVault PRO - อาณาจักรเกมเมอร์</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Confetti FX สำหรับระบบสุ่มเกม -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Prompt', 'sans-serif'] },
+          colors: {
+            vault: {
+              bg: '#07090e',
+              card: '#0f1420',
+              accent: '#8b5cf6',
+              neon: '#06b6d4',
+              gold: '#f59e0b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      background-color: #07090e;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.4); }
+      50% { box-shadow: 0 0 25px rgba(6, 182, 212, 0.6); }
+    }
+    .glow-effect { animation: pulseGlow 3s infinite ease-in-out; }
+  </style>
+</head>
+
+<body class="text-slate-100 min-h-screen pb-24 antialiased">
+
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-40 bg-vault-bg/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+    <div class="max-w-2xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-purple-500/30">
+          <i class="fa-solid fa-gamepad text-white text-base"></i>
+        </div>
+        <div>
+          <span class="text-xs font-bold tracking-widest text-cyan-400 uppercase">PRO EDITION</span>
+          <h1 class="text-base font-extrabold tracking-tight text-white leading-none">GameVault</h1>
+        </div>
+      </div>
+
+      <!-- Action Gimmicks -->
+      <div class="flex items-center gap-2">
+        <!-- ปุ่มสุ่มเกม -->
+        <button onclick="spinRandomGame()" class="px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 active:scale-95 transition-all">
+          <i class="fa-solid fa-dice text-amber-300 animate-bounce"></i>
+          <span>สุ่มเกม</span>
+        </button>
+
+        <!-- ปุ่มดูรายการโปรด (Wishlist) -->
+        <button onclick="toggleWishlistView()" id="wishlistHeaderBtn" class="relative w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 active:scale-90 transition-all">
+          <i class="fa-solid fa-heart text-xs" id="heartIconHeader"></i>
+          <span id="favCountBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white font-bold text-[9px] rounded-full items-center justify-center">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 pt-3">
+
+    <!-- Hero Spotlight Section -->
+    <div class="relative rounded-2xl overflow-hidden border border-slate-800 mb-4 bg-slate-950 shadow-2xl">
+      <div class="relative aspect-[16/8] w-full">
+        <img id="heroImg" src="https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2358720/header.jpg" class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-vault-bg via-slate-950/40 to-transparent"></div>
+        <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-purple-600/90 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
+          <i class="fa-solid fa-crown text-amber-300"></i> เกมมาแรงอันดับ 1
+        </div>
+        <div class="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+          <div>
+            <h2 id="heroTitle" class="text-lg font-black text-white drop-shadow-md">Black Myth: Wukong</h2>
+            <p class="text-[11px] text-cyan-300 font-medium"><i class="fa-solid fa-star text-amber-400"></i> 9.8/10 • มหากาพย์ไซอิ๋ว Action RPG</p>
+          </div>
+          <button onclick="openHeroDetails()" class="px-3 py-1.5 rounded-xl bg-white text-slate-950 font-bold text-xs flex items-center gap-1 shadow-lg hover:bg-slate-200 active:scale-95 transition-all">
+            <span>ดูข้อมูล</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="space-y-2.5 mb-4">
+      <!-- Search Input -->
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="ค้นหาชื่อเกม แนวเกม หรือแพลตฟอร์ม..."
+          class="w-full pl-9 pr-8 py-2.5 rounded-xl bg-vault-card border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all shadow-inner"
+        >
+        <button id="clearSearchBtn" onclick="resetSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Quick Category Pills -->
+      <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs" id="categoryGroup">
+        <button onclick="setCategory('all', this)" class="cat-pill active px-3.5 py-1.5 rounded-full font-medium whitespace-nowrap bg-purple-600 text-white shadow-md shadow-purple-600/30">ทั้งหมด</button>
+        <button onclick="setCategory('Souls-like / Action', this)" class="cat-pill px-3.5 py-1.5 rounded-full font-medium whitespace-nowrap bg-vault-card text-slate-400 border border-slate-800">Souls-like</button>
+        <button onclick="setCategory('Co-op / Online', this)" class="cat-pill px-3.5 py-1.5 rounded-full font-medium whitespace-nowrap bg-vault-card text-slate-400 border border-slate-800">Co-op กับเพื่อน</button>
+        <button onclick="setCategory('Open World RPG', this)" class="cat-pill px-3.5 py-1.5 rounded-full font-medium whitespace-nowrap bg-vault-card text-slate-400 border border-slate-800">Open World</button>
+        <button onclick="setCategory('Shooter / FPS', this)" class="cat-pill px-3.5 py-1.5 rounded-full font-medium whitespace-nowrap bg-vault-card text-slate-400 border border-slate-800">ยิงปืน / FPS</button>
+      </div>
+
+      <!-- Sort & Active Status Filter -->
+      <div class="flex items-center justify-between text-xs text-slate-400 px-1 pt-1">
+        <span id="resultCount" class="font-medium">กำลังแสดง 8 เกม</span>
+        <div class="flex items-center gap-1.5">
+          <label class="text-[11px] text-slate-400">จัดเรียง:</label>
+          <select id="sortSelect" onchange="applyFilters()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-purple-500">
+            <option value="rating">คะแนนรีวิวสูงสุด</option>
+            <option value="year">ปีที่เปิดตัว (ใหม่สุด)</option>
+            <option value="name">ชื่อเกม (A-Z)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Games Grid -->
+    <div id="gamesGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      <!-- Data injected via JS -->
+    </div>
+
+  </main>
+
+  <!-- Modal 1: ดูรายละเอียดเกม + ลิงก์ร้านค้า -->
+  <div id="detailsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-vault-card border-t sm:border border-slate-800 w-full max-w-lg rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="relative w-full aspect-[16/8] bg-slate-950 flex-shrink-0">
+        <img id="modalCover" src="" class="w-full h-full object-cover">
+        <button onclick="closeModal('detailsModal')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/70 text-slate-200 flex items-center justify-center active:scale-90 transition-all">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+        <div id="modalRatingBadge" class="absolute bottom-2.5 left-3 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md border border-amber-400/40 text-amber-400 font-bold text-xs flex items-center gap-1">
+        </div>
+      </div>
+      <div class="p-4 sm:p-5 overflow-y-auto flex-1">
+        <div class="flex items-center justify-between mb-2">
+          <span id="modalCategory" class="text-[10px] font-bold text-cyan-400 bg-cyan-950/70 border border-cyan-800/40 px-2 py-0.5 rounded"></span>
+          <span id="modalYear" class="text-[11px] text-slate-400"></span>
+        </div>
+        <h3 id="modalTitle" class="text-lg font-extrabold text-white mb-2 leading-tight"></h3>
+        <p id="modalDesc" class="text-xs text-slate-300 leading-relaxed mb-4"></p>
+
+        <div class="grid grid-cols-2 gap-2 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 mb-4 text-xs">
+          <div>
+            <span class="text-slate-500 block text-[10px]">แพลตฟอร์ม</span>
+            <span id="modalPlatforms" class="text-slate-200 font-semibold"></span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px]">ผู้พัฒนา</span>
+            <span id="modalDev" class="text-slate-200 font-semibold"></span>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="modalFavBtn" onclick="toggleFavFromModal()" class="flex-1 py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-900 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all text-slate-200">
+            <i class="fa-solid fa-heart" id="modalHeartIcon"></i>
+            <span id="modalFavText">บันทึก</span>
+          </button>
+          <a id="modalSteamLink" href="#" target="_blank" class="flex-[2] py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 active:scale-95 transition-all">
+            <i class="fa-brands fa-steam text-sm"></i>
+            <span>เปิดหน้าร้านค้า Steam</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: วงล้อสุ่มเกมแก้เบื่อ (Randomizer Modal) -->
+  <div id="randomModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-vault-card border border-purple-500/50 w-full max-w-sm rounded-3xl p-5 text-center shadow-2xl glow-effect">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-cyan-500 flex items-center justify-center mx-auto mb-3 shadow-lg">
+        <i class="fa-solid fa-dice-d20 text-white text-2xl animate-spin" id="diceIcon"></i>
+      </div>
+      <span class="text-[10px] font-bold tracking-widest text-purple-400 uppercase">LUCKY GAME PICKER</span>
+      <h3 class="text-base font-bold text-white mt-1">วันนี้เล่นเกมอะไรดี?</h3>
+      
+      <!-- Random Result Display -->
+      <div class="my-4 bg-slate-950 p-3 rounded-2xl border border-slate-800">
+        <img id="randomCover" src="" class="w-full aspect-[16/9] object-cover rounded-xl mb-2.5">
+        <h4 id="randomTitle" class="text-sm font-extrabold text-white line-clamp-1">กำลังสุ่ม...</h4>
+        <p id="randomTag" class="text-[11px] text-cyan-400 mt-0.5">-</p>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="spinRandomGame()" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 active:scale-95 transition-all">
+          <i class="fa-solid fa-rotate-right mr-1"></i> สุ่มใหม่
+        </button>
+        <button id="viewRandomBtn" onclick="openDetailsFromRandom()" class="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white shadow-md shadow-purple-600/30 active:scale-95 transition-all">
+          ดูข้อมูลเกมนี้
+        </button>
+      </div>
+      <button onclick="closeModal('randomModal')" class="mt-3 text-[11px] text-slate-500 hover:text-slate-300">ปิดหน้าต่าง</button>
+    </div>
+  </div>
+
+  <script>
+    // ฐานข้อมูลเกม - รูปภาพจริง 100% จาก Steam Asset CDN
+    const gamesDatabase = [
+      {
+        id: "2358720",
+        title: "Black Myth: Wukong",
+        category: "Souls-like / Action",
+        rating: 9.8,
+        year: 2024,
+        badge: "มาแรง 2024",
+        cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2358720/header.jpg",
+        description: "สวมบทบาทเป็น 'ผู้ถูกลิขิต' ท่องไปในแดนศักดิ์สิทธิ์โบราณจากตำนานไซอิ๋ว สัมผัสท่วงท่าการต่อสู้ด้วยกระบองและคาถาแปลงกาย กราฟิกระดับ Unreal Engine 5",
+        platforms: "PC, PS5",
+        developer: "Game Science",
+        url: "https://store.steampowered.com/app/2358720/"
+      },
+      {
+        id: "1245620",
+        title: "ELDEN RING",
+        category: "Souls-like / Action",
+        rating: 9.9,
+        year: 2022,
+        badge: "GOTY 2022",
+        cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg",
+        description: "สุดยอดมหากาพย์เกมแฟนตาซี Action RPG แบบเปิดกว้าง สำรวจดินแดนมัชฌิมาที่เต็มไปด้วยบอสสุดอลังการและดันเจี้ยนลับนับร้อยแห่ง",
+        platforms: "PC, PS4/PS5, Xbox",
+        developer: "FromSoftware Inc.",
+        url: "https://store.steampowered.com/app/1245620/"
+      },
+      {
+        id: "553850",
+        title: "HELLDIVERS™ 2",
+        category: "Co-op / Online",
+        rating: 9.1,
+        year: 2024,
+        badge: "Co-op ยอดเยี่ยม",
+        cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/553850/header.jpg",
+        description: "จับทีม 4 คนต่อสู้เพื่อกอบกู้สันติภาพและเสรีภาพแห่งซูเปอร์เอิร์ธ เผชิญหน้ากองทัพเอเลี่ยนแมลงขนาดยักษ์และหุ่นยนต์กลืนกินดวงดาว",
+        platforms: "PC, PS5",
+        developer: "Arrowhead Game Studios",
+        url: "https://store.steampowered.com/app/553850/"
+      },
+      {
+        id: "1091500",
+        title: "Cyberpunk 2077",
+        category: "Open World RPG",
+        rating: 9.3,
+        year: 2020,
+        badge: "เนื้อเรื่องยอดเยี่ยม",
+        cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg",
+        description: "โลดแล่นใน Night City มหานครแห่งอนาคตที่หมกมุ่นกับพลังอำนาจและการดัดแปลงร่างจักรกล ร่วมต่อสู้เคียงบ่าเคียงไหล่กับวิญญาณ Johnny Silverhand",
+        platforms: "PC, PS5, Xbox Series",
+        developer: "CD PROJEKT RED",
+        url: "https://store.steampowered.com/app/1091500/"
+      },
+      {
+        id: "1086940",
+        title: "Baldur's Gate 3",
+        category: "Open World RPG",
+        rating: 9.9,
+        year: 2023,
+        badge: "GOTY 2023",
+        cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1086940/header.jpg",
+        description: "สวมบทบาทผจญภัยในโลก Dungeons & Dragons ที่ให้อิสระในการวางกลยุทธ์และการเลือกบทสนทนาที่ส่งผลต่อเนื้อเรื่องอย่างไม่สิ้นสุด",
+        platforms: "PC, PS5, Xbox Series",
+        developer: "Larian Studios",
+        url: "https://store.steampowered.com/app/1086940/"
+      },
+      {
+        id: "1623730",
+        title: "Palworld",
+        category: "Co-op / Online",
+        rating: 8.9,
+        year: 2024,
+        badge: "เกมยอดฮิต",
+        cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1623730/header.jpg",
+        description: "ผจญภัยและเอาชีวิตรอดในดินแดนลึกลับที่มีสิ่งมีชีวิตที่เรียกว่า 'Pal' จับพวกมันมาช่วยสร้างฐาน ผลิตอาวุธ หรือร่วมต่อสู้ไปด้วยกัน",
+        platforms: "PC, Xbox Series, PS5",
+        developer: "Pocketpair",
+        url: "https://store.steampowered.com/app/1623730/"
+      },
+      {
+        id: "1172470",
+        title: "Apex Legends",
+        category: "Shooter / FPS",
+        rating: 8.8,
+        year: 2019,
+        badge: "เล่นฟรี (F2P)",
+        cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1172470/header.jpg",
+        description: "สุดยอดเกม Battle Royale ยิงเร็ว ตอบสนองไว รวมทีมผู้มีสกิลเฉพาะตัวเพื่อชิงความเป็นหนึ่งในสนามแข่ง Apex Games",
+        platforms: "PC, PS5, Xbox, Switch",
+        developer: "Respawn Entertainment",
+        url: "https://store.steampowered.com/app/1172470/"
+      },
+      {
+        id: "2246340",
+        title: "Monster Hunter Wilds",
+        category: "Souls-like / Action",
+        rating: 9.6,
+        year: 2025,
+        badge: "มอนฮันต์ยุคใหม่",
+        cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2246340/header.jpg",
+        description: "ก้าวสู่พรมแดนใหม่ของเหล่านักล่า มอนสเตอร์ขนาดยักษ์ สภาพอากาศแปรปรวน และระบบนิเวศที่มีชีวิตและดุร้ายที่สุดเท่าที่เคยมีมา",
+        platforms: "PC, PS5, Xbox Series",
+        developer: "CAPCOM Co., Ltd.",
+        url: "https://store.steampowered.com/app/2246340/"
+      }
+    ];
+
+    // สถานะแอป
+    let currentCategory = 'all';
+    let onlyWishlist = false;
+    let selectedGame = null;
+    let favorites = JSON.parse(localStorage.getItem('gv_favorites')) || [];
+
+    // อัปเดตไอคอน Wishlist ตัวบนสุด
+    function updateFavBadge() {
+      const badge = document.getElementById('favCountBadge');
+      const icon = document.getElementById('heartIconHeader');
+      badge.textContent = favorites.length;
+      if (favorites.length > 0) {
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+        icon.classList.add('text-red-500');
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+        icon.classList.remove('text-red-500');
+      }
+      localStorage.setItem('gv_favorites', JSON.stringify(favorites));
+    }
+
+    function toggleFavorite(id, event) {
+      if (event) event.stopPropagation();
+      const index = favorites.indexOf(id);
+      if (index > -1) {
+        favorites.splice(index, 1);
+      } else {
+        favorites.push(id);
+      }
+      updateFavBadge();
+      applyFilters();
+    }
+
+    function toggleWishlistView() {
+      onlyWishlist = !onlyWishlist;
+      const btn = document.getElementById('wishlistHeaderBtn');
+      if (onlyWishlist) {
+        btn.classList.add('border-red-500', 'bg-red-950/40');
+      } else {
+        btn.classList.remove('border-red-500', 'bg-red-950/40');
+      }
+      applyFilters();
+    }
+
+    function renderGames(list) {
+      const grid = document.getElementById('gamesGrid');
+      const counter = document.getElementById('resultCount');
+      grid.innerHTML = '';
+      counter.textContent = `กำลังแสดง ${list.length} เกม`;
+
+      if (list.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-500">
+            <i class="fa-solid fa-ghost text-4xl mb-3 text-slate-600"></i>
+            <p class="text-xs">ไม่พบเกมที่ค้นหา</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(game => {
+        const isFav = favorites.includes(game.id);
+        const card = document.createElement('div');
+        card.className = "bg-vault-card border border-slate-800/90 rounded-2xl overflow-hidden active:scale-[0.99] transition-all cursor-pointer flex flex-col justify-between hover:border-purple-500/60";
+        card.onclick = () => openDetails(game);
+
+        card.innerHTML = `
+          <div>
+            <div class="relative aspect-[16/9] w-full bg-slate-950 overflow-hidden">
+              <img src="${game.cover}" alt="${game.title}" class="w-full h-full object-cover">
+              
+              <!-- Badges -->
+              <span class="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950/90 border border-purple-500/50 text-purple-300">
+                ${game.badge}
+              </span>
+
+              <!-- ปุ่ม Wishlist -->
+              <button onclick="toggleFavorite('${game.id}', event)" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-xs transition-all active:scale-75 ${isFav ? 'text-red-500' : 'text-slate-400 hover:text-white'}">
+                <i class="fa-solid fa-heart"></i>
+              </button>
+
+              <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/80 backdrop-blur-md border border-amber-400/40 text-amber-400">
+                <i class="fa-solid fa-star text-[9px]"></i> ${game.rating}
+              </span>
+            </div>
+
+            <div class="p-3">
+              <div class="flex items-center gap-1.5 mb-1">
+                <span class="text-[9px] font-bold text-cyan-400 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800/40">${game.category}</span>
+                <span class="text-[10px] text-slate-500">${game.year}</span>
+              </div>
+              <h4 class="font-bold text-sm text-white line-clamp-1">${game.title}</h4>
+              <p class="text-slate-400 text-xs mt-1 line-clamp-2 leading-relaxed">${game.description}</p>
+            </div>
+          </div>
+
+          <div class="px-3 py-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400 bg-slate-900/30">
+            <span><i class="fa-solid fa-desktop mr-1 text-[10px]"></i>${game.platforms}</span>
+            <span class="text-purple-400 font-semibold flex items-center gap-1">ดูข้อมูล <i class="fa-solid fa-chevron-right text-[8px]"></i></span>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function applyFilters() {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const sortVal = document.getElementById('sortSelect').value;
+      const clearBtn = document.getElementById('clearSearchBtn');
+
+      clearBtn.classList.toggle('hidden', query.length === 0);
+
+      let filtered = gamesDatabase.filter(g => {
+        const matchesCat = currentCategory === 'all' || g.category === currentCategory;
+        const matchesQuery = g.title.toLowerCase().includes(query) || g.category.toLowerCase().includes(query) || g.platforms.toLowerCase().includes(query);
+        const matchesWish = !onlyWishlist || favorites.includes(g.id);
+        return matchesCat && matchesQuery && matchesWish;
+      });
+
+      // ระบบจัดเรียง (Sorting Gimmick)
+      if (sortVal === 'rating') filtered.sort((a, b) => b.rating - a.rating);
+      if (sortVal === 'year') filtered.sort((a, b) => b.year - a.year);
+      if (sortVal === 'name') filtered.sort((a, b) => a.title.localeCompare(b.title));
+
+      renderGames(filtered);
+    }
+
+    function setCategory(cat, btn) {
+      currentCategory = cat;
+      document.querySelectorAll('.cat-pill').forEach(el => {
+        el.classList.remove('bg-purple-600', 'text-white', 'shadow-md', 'shadow-purple-600/30');
+        el.classList.add('bg-vault-card', 'text-slate-400', 'border', 'border-slate-800');
+      });
+      btn.classList.remove('bg-vault-card', 'text-slate-400', 'border', 'border-slate-800');
+      btn.classList.add('bg-purple-600', 'text-white', 'shadow-md', 'shadow-purple-600/30');
+      applyFilters();
+    }
+
+    function resetSearch() {
+      document.getElementById('searchInput').value = '';
+      applyFilters();
+    }
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+    // Modal Details Control
+    function openDetails(game) {
+      selectedGame = game;
+      document.getElementById('modalCover').src = game.cover;
+      document.getElementById('modalTitle').textContent = game.title;
+      document.getElementById('modalCategory').textContent = game.category;
+      document.getElementById('modalYear').textContent = `วางจำหน่ายปี ${game.year}`;
+      document.getElementById('modalDesc').textContent = game.description;
+      document.getElementById('modalPlatforms').textContent = game.platforms;
+      document.getElementById('modalDev').textContent = game.developer;
+      document.getElementById('modalRatingBadge').innerHTML = `<i class="fa-solid fa-star text-[10px]"></i> ${game.rating} / 10`;
+      document.getElementById('modalSteamLink').href = game.url;
+
+      const isFav = favorites.includes(game.id);
+      const icon = document.getElementById('modalHeartIcon');
+      const text = document.getElementById('modalFavText');
+      icon.className = isFav ? "fa-solid fa-heart text-red-500" : "fa-solid fa-heart text-slate-400";
+      text.textContent = isFav ? "อยู่ในรายการโปรด" : "เพิ่มในรายการโปรด";
+
+      const modal = document.getElementById('detailsModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function openHeroDetails() {
+      openDetails(gamesDatabase[0]);
+    }
+
+    function toggleFavFromModal() {
+      if (!selectedGame) return;
+      toggleFavorite(selectedGame.id);
+      openDetails(selectedGame); // refresh modal state
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // Gimmick: วงล้อสุ่มเกม (Lucky Picker with Confetti)
+    let randomPickedGame = null;
+    function spinRandomGame() {
+      const modal = document.getElementById('randomModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      const coverEl = document.getElementById('randomCover');
+      const titleEl = document.getElementById('randomTitle');
+      const tagEl = document.getElementById('randomTag');
+      let counter = 0;
+
+      // เอฟเฟกต์หมุนสลับชื่อเกมแบบไวๆ
+      const interval = setInterval(() => {
+        const rand = gamesDatabase[Math.floor(Math.random() * gamesDatabase.length)];
+        coverEl.src = rand.cover;
+        titleEl.textContent = rand.title;
+        tagEl.textContent = rand.category;
+        counter++;
+
+        if (counter > 12) {
+          clearInterval(interval);
+          randomPickedGame = rand;
+          // ยิงพลุกระดาษ Confetti ฉลอง!
+          confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: { y: 0.6 }
+          });
+        }
+      }, 90);
+    }
+
+    function openDetailsFromRandom() {
+      closeModal('randomModal');
+      if (randomPickedGame) openDetails(randomPickedGame);
+    }
+
+    // เริ่มต้นระบบ
+    updateFavBadge();
+    applyFilters();
+  </script>
+</body>
+</html>
